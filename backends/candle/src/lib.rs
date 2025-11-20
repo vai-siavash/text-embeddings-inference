@@ -302,7 +302,22 @@ impl CandleBackend {
                     .to_string(),
             )),
             (Config::Qwen3(config), Device::Cpu | Device::Metal(_)) => {
-                tracing::info!("Starting Qwen3 model on {:?}", device);
+                if config.id2label.is_some() {
+                    tracing::info!("Starting Qwen3ForSequenceClassification model on {:?}", device);
+                }
+                
+                let model_type = if config.id2label.is_some() {
+                    ModelType::Classifier
+                } else {
+                    model_type
+                };
+                
+                if config.id2label.is_some() {
+                    tracing::info!("Starting Qwen3 Sequence Classification model on {:?}", device);
+                } else {
+                    tracing::info!("Starting Qwen3 model on {:?}", device);
+                }
+                
                 Ok(Box::new(Qwen3Model::load(vb, &config, model_type).s()?))
             }
             #[cfg(feature = "cuda")]
@@ -493,6 +508,12 @@ impl CandleBackend {
             }
             #[cfg(feature = "cuda")]
             (Config::Qwen3(config), Device::Cuda(_)) => {
+                let model_type = if config.id2label.is_some() {
+                    ModelType::Classifier
+                } else {
+                    model_type
+                };
+                
                 if dtype != DType::F16
                     || !cfg!(any(feature = "flash-attn", feature = "flash-attn-v1"))
                     || &std::env::var("USE_FLASH_ATTENTION")
